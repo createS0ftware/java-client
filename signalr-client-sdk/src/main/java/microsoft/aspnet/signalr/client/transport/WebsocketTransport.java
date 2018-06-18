@@ -6,6 +6,7 @@ See License.txt in the project root for license information.
 
 package microsoft.aspnet.signalr.client.transport;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -18,6 +19,8 @@ import org.java_websocket.exceptions.InvalidDataException;
 import org.java_websocket.framing.Framedata;
 import org.java_websocket.handshake.ServerHandshake;
 import org.java_websocket.util.Charsetfunctions;
+
+import javax.net.ssl.SSLSocketFactory;
 
 import microsoft.aspnet.signalr.client.ConnectionBase;
 import microsoft.aspnet.signalr.client.LogLevel;
@@ -78,8 +81,9 @@ public class WebsocketTransport extends HttpClientTransport {
             e.printStackTrace();
         }
 
-        mConnectionFuture = new UpdateableCancellableFuture<Void>(null);
+        mConnectionFuture = new UpdateableCancellableFuture<>(null);
 
+        url = "wss" + url.substring(5); // replace https with wss
         URI uri;
         try {
             uri = new URI(url);
@@ -108,6 +112,7 @@ public class WebsocketTransport extends HttpClientTransport {
             @Override
             public void onError(Exception e) {
                 mWebSocketClient.close();
+                mConnectionFuture.triggerError(e);
             }
 
             @Override
@@ -115,20 +120,20 @@ public class WebsocketTransport extends HttpClientTransport {
                 try {
                     String decodedString = Charsetfunctions.stringUtf8(frame.getPayloadData());
 
-                    if(decodedString.equals("]}")){
+                    if (decodedString.equals("]}")) {
                         return;
                     }
 
-                    if(decodedString.endsWith(":[") || null == mPrefix){
+                    if (decodedString.endsWith(":[") || null == mPrefix) {
                         mPrefix = decodedString;
                         return;
                     }
 
                     String simpleConcatenate = mPrefix + decodedString;
 
-                    if(isJSONValid(simpleConcatenate)){
+                    if (isJSONValid(simpleConcatenate)) {
                         onMessage(simpleConcatenate);
-                    }else{
+                    } else {
                         String extendedConcatenate = simpleConcatenate + "]}";
                         if (isJSONValid(extendedConcatenate)) {
                             onMessage(extendedConcatenate);
@@ -141,14 +146,16 @@ public class WebsocketTransport extends HttpClientTransport {
                 }
             }
         };
+
+        try {
+            mWebSocketClient.setSocket(SSLSocketFactory.getDefault().createSocket());
+        } catch (IOException e1) {
+            mConnectionFuture.triggerError(e1);
+            return mConnectionFuture;
+        }
         mWebSocketClient.connect();
 
-        connection.closed(new Runnable() {
-            @Override
-            public void run() {
-                mWebSocketClient.close();
-            }
-        });
+        connection.closed(() -> mWebSocketClient.close());
 
         return mConnectionFuture;
     }
@@ -159,11 +166,11 @@ public class WebsocketTransport extends HttpClientTransport {
         return new UpdateableCancellableFuture<Void>(null);
     }
 
-    private boolean isJSONValid(String test){
+    private boolean isJSONValid(String test) {
         try {
             gson.fromJson(test, Object.class);
             return true;
-        } catch(com.google.gson.JsonSyntaxException ex) {
+        } catch (com.google.gson.JsonSyntaxException ex) {
             return false;
         }
     }

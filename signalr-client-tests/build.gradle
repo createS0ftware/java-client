@@ -3,5 +3,6 @@ apply plugin: 'java'
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation project(':signalr-client-sdk')
+    implementation 'com.google.code.gson:gson:2.8.5'
     implementation 'junit:junit:4.12'
 }

@@ -9,7 +9,6 @@ package microsoft.aspnet.signalr.client.http.android;
 import android.annotation.SuppressLint;
 import android.net.http.AndroidHttpClient;
 import android.os.AsyncTask;
-import android.os.Build;
 
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
@@ -101,13 +100,13 @@ public class AndroidHttpConnection implements HttpConnection {
 
                     mResponseStream = response.getEntity().getContent();
                     Header[] headers = response.getAllHeaders();
-                    Map<String, List<String>> headersMap = new HashMap<String, List<String>>();
+                    Map<String, List<String>> headersMap = new HashMap<>();
                     for (Header header : headers) {
                         String headerName = header.getName();
                         if (headersMap.containsKey(headerName)) {
                             headersMap.get(headerName).add(header.getValue());
                         } else {
-                            List<String> headerValues = new ArrayList<String>();
+                            List<String> headerValues = new ArrayList<>();
                             headerValues.add(header.getValue());
                             headersMap.put(headerName, headerValues);
                         }
@@ -144,7 +143,7 @@ public class AndroidHttpConnection implements HttpConnection {
 
             @Override
             public void run() {
-                AsyncTask<Void, Void, Void> cancelTask = new AsyncTask<Void, Void, Void>() {
+                @SuppressLint("StaticFieldLeak") AsyncTask<Void, Void, Void> cancelTask = new AsyncTask<Void, Void, Void>() {
                     @Override
                     protected Void doInBackground(Void... params) {
                         requestTask.closeStreamAndClient();
@@ -165,17 +164,13 @@ public class AndroidHttpConnection implements HttpConnection {
     private void executeTask(AsyncTask<Void, Void, Void> task) {
         // If it's running with Honeycomb or greater, it must execute each
         // request in a different thread
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-            task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-        } else {
-            task.execute();
-        }
+        task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
     /**
      * Internal class to represent an async operation that can close a stream
      */
-    private abstract class RequestTask extends AsyncTask<Void, Void, Void> {
+    private abstract static class RequestTask extends AsyncTask<Void, Void, Void> {
 
         /**
          * Closes the internal stream and http client, if they exist

@@ -287,7 +287,7 @@ public class MainActivity extends Activity {
 
 	private void log(String title, String content) {
 		String message = title + " - " + content;
-		Log.d("SIGNALR-TEST-INTEGRATION", message);
+		Log.d("SIGNALR-TESTINTEGRATION", message);
 
 		mLog.append(message);
 		mLog.append('\n');
