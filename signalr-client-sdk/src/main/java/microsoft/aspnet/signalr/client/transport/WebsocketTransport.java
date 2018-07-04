@@ -35,9 +35,12 @@ import microsoft.aspnet.signalr.client.http.HttpConnection;
  */
 public class WebsocketTransport extends HttpClientTransport {
 
-    private String mPrefix;
     private static final Gson gson = new Gson();
-    WebSocketClient mWebSocketClient;
+    private static final String DEFAULT_WSS_SCHEME = "wss";
+    private static final String HTTP_WSS_SCHEME = "ws";
+
+    private String mPrefix;
+    private WebSocketClient mWebSocketClient;
     private UpdateableCancellableFuture<Void> mConnectionFuture;
 
     public WebsocketTransport(Logger logger) {
@@ -86,7 +89,12 @@ public class WebsocketTransport extends HttpClientTransport {
         url = "wss" + url.substring(5); // replace https with wss
         URI uri;
         try {
+            // URI(String scheme, String host, String path, String fragment)
             uri = new URI(url);
+            if (uri.getScheme() == null || uri.getScheme().length() == 0) {
+                //uri = new URI(HTTP_WSS_SCHEME, null, parseHost(url), -1, parsePath(url), getQuery(url),null);
+                uri = new URI( HTTP_WSS_SCHEME + url.substring(3));
+            }
         } catch (URISyntaxException e) {
             e.printStackTrace();
             mConnectionFuture.triggerError(e);
@@ -158,6 +166,26 @@ public class WebsocketTransport extends HttpClientTransport {
         connection.closed(() -> mWebSocketClient.close());
 
         return mConnectionFuture;
+    }
+
+    private String parseHost(String url) {
+        return getUrlSection(url).split("/")[0];
+    }
+
+    private String parsePath(String url) {
+        return getPathAndQuery(url)[0];
+    }
+
+    private String[] getPathAndQuery(String url) {
+        return getUrlSection(url).split(parseHost(url))[1].split("\\?");
+    }
+
+    private String getUrlSection(String url) {
+        return url.split("//")[1];
+    }
+
+    private String getQuery(String url) {
+        return getPathAndQuery(url)[1];
     }
 
     @Override
